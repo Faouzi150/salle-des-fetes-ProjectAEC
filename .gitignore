@@ -1,0 +1,19 @@
+# Fichiers système (macOS / Windows)
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Dossiers et fichiers d'éditeurs / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Fichiers de configuration locale et secrets
+config.local.php
+.env
+*.log
+
+# Dépendances éventuelles
+/vendor/
+/node_modules/

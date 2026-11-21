@@ -29,29 +29,11 @@ usort($sallesFiltrees, static function (array $a, array $b) use ($tri): int {
         default => strcmp($a['nom'], $b['nom']),
     };
 });
-?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nos Salles — Palais des Fêtes</title>
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-  <header>
-    <div class="conteneur nav-barre">
-      <a href="index.php" class="logo">Palais des Fêtes</a>
-      <nav aria-label="Navigation principale">
-        <ul>
-          <li><a href="index.php">Accueil</a></li>
-          <li><a href="catalogue.php" class="actif">Nos Salles</a></li>
-          <li><a href="reservation.php">Réserver</a></li>
-        </ul>
-      </nav>
-    </div>
-  </header>
 
+$pageTitre = 'Nos Salles';
+$pageActive = 'catalogue';
+require_once __DIR__ . '/includes/header.php';
+?>
   <main class="conteneur">
     <h1 class="section-titre">Catalogue de nos salles de réception</h1>
 
@@ -121,12 +103,7 @@ usort($sallesFiltrees, static function (array $a, array $b) use ($tri): int {
       <?php endif; ?>
     </section>
   </main>
-
-  <footer>
-    <div class="conteneur">
-      <p>&copy; 2026 Palais des Fêtes — ProjetAEC. Tous droits réservés.</p>
-    </div>
-  </footer>
-</body>
-</html>
+<?php
+require_once __DIR__ . '/includes/footer.php';
+?>
 EOF

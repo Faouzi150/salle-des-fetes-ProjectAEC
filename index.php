@@ -1,29 +1,11 @@
 cat << 'EOF' > index.php
 <?php
 require_once __DIR__ . '/data/salles.php';
-?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Accueil — Palais des Fêtes</title>
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-  <header>
-    <div class="conteneur nav-barre">
-      <a href="index.php" class="logo">Palais des Fêtes</a>
-      <nav aria-label="Navigation principale">
-        <ul>
-          <li><a href="index.php" class="actif">Accueil</a></li>
-          <li><a href="catalogue.php">Nos Salles</a></li>
-          <li><a href="reservation.php">Réserver</a></li>
-        </ul>
-      </nav>
-    </div>
-  </header>
 
+$pageTitre = 'Accueil';
+$pageActive = 'accueil';
+require_once __DIR__ . '/includes/header.php';
+?>
   <main class="conteneur">
     <section class="hero">
       <h1>Des espaces d'exception pour vos événements inoubliables</h1>
@@ -52,12 +34,7 @@ require_once __DIR__ . '/data/salles.php';
       </div>
     </section>
   </main>
-
-  <footer>
-    <div class="conteneur">
-      <p>&copy; 2026 Palais des Fêtes — ProjetAEC. Tous droits réservés.</p>
-    </div>
-  </footer>
-</body>
-</html>
+<?php
+require_once __DIR__ . '/includes/footer.php';
+?>
 EOF

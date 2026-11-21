@@ -4,29 +4,11 @@ require_once __DIR__ . '/data/salles.php';
 
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 1;
 $salle = $salles[$id] ?? reset($salles);
-?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><?= htmlspecialchars($salle['nom'], ENT_QUOTES, 'UTF-8') ?> — Palais des Fêtes</title>
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-  <header>
-    <div class="conteneur nav-barre">
-      <a href="index.php" class="logo">Palais des Fêtes</a>
-      <nav aria-label="Navigation principale">
-        <ul>
-          <li><a href="index.php">Accueil</a></li>
-          <li><a href="catalogue.php" class="actif">Nos Salles</a></li>
-          <li><a href="reservation.php">Réserver</a></li>
-        </ul>
-      </nav>
-    </div>
-  </header>
 
+$pageTitre = $salle['nom'];
+$pageActive = 'catalogue';
+require_once __DIR__ . '/includes/header.php';
+?>
   <main class="conteneur">
     <p style="margin-top: 1.5rem;"><a href="catalogue.php">&larr; Retour au catalogue</a></p>
 
@@ -60,11 +42,7 @@ $salle = $salles[$id] ?? reset($salles);
       </div>
     </article>
   </main>
-
-  <footer>
-    <div class="conteneur">
-      <p>&copy; 2026 Palais des Fêtes — ProjetAEC. Tous droits réservés.</p>
-    </div>
-  </footer>
-</body>
-</html>
+<?php
+require_once __DIR__ . '/includes/footer.php';
+?>
+EOF

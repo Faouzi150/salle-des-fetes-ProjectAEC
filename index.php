@@ -1,6 +1,8 @@
-cat << 'EOF' > index.php
 <?php
-require_once __DIR__ . '/data/salles.php';
+require_once __DIR__ . '/config/db.php';
+
+$stmt = $pdo->query('SELECT id, nom, categorie, capacite, superficie, tarif, resume FROM salles ORDER BY id ASC');
+$salles = $stmt->fetchAll();
 
 $pageTitre = 'Accueil';
 $pageActive = 'accueil';
@@ -37,4 +39,3 @@ require_once __DIR__ . '/includes/header.php';
 <?php
 require_once __DIR__ . '/includes/footer.php';
 ?>
-EOF

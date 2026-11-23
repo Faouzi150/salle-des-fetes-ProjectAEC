@@ -1,9 +1,19 @@
-cat << 'EOF' > detail.php
 <?php
-require_once __DIR__ . '/data/salles.php';
+require_once __DIR__ . '/config/db.php';
 
-$id = isset($_GET['id']) ? (int) $_GET['id'] : 1;
-$salle = $salles[$id] ?? reset($salles);
+$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+
+$stmtSalle = $pdo->prepare('SELECT id, nom, categorie, capacite, superficie, tarif, description FROM salles WHERE id = :id');
+$stmtSalle->execute([':id' => $id]);
+$salle = $stmtSalle->fetch();
+
+if (!$salle) {
+    $salle = $pdo->query('SELECT id, nom, categorie, capacite, superficie, tarif, description FROM salles ORDER BY id ASC LIMIT 1')->fetch();
+}
+
+$stmtFormules = $pdo->prepare('SELECT id, nom, tarif, description FROM formules WHERE salle_id = :salle_id ORDER BY id ASC');
+$stmtFormules->execute([':salle_id' => (int) $salle['id']]);
+$formules = $stmtFormules->fetchAll();
 
 $pageTitre = $salle['nom'];
 $pageActive = 'catalogue';
@@ -27,11 +37,11 @@ require_once __DIR__ . '/includes/header.php';
       <section aria-labelledby="titre-formules">
         <h2 id="titre-formules" class="section-titre" style="font-size: 1.2rem;">Formules disponibles en option</h2>
         <div class="grille-cartes">
-          <?php foreach ($salle['formules'] as $formule): ?>
+          <?php foreach ($formules as $formule): ?>
             <div class="carte">
               <h3><?= htmlspecialchars($formule['nom'], ENT_QUOTES, 'UTF-8') ?></h3>
               <p class="meta">Forfait : <?= (int) $formule['tarif'] ?> €</p>
-              <p><?= htmlspecialchars($formule['desc'], ENT_QUOTES, 'UTF-8') ?></p>
+              <p><?= htmlspecialchars($formule['description'], ENT_QUOTES, 'UTF-8') ?></p>
             </div>
           <?php endforeach; ?>
         </div>
@@ -45,4 +55,3 @@ require_once __DIR__ . '/includes/header.php';
 <?php
 require_once __DIR__ . '/includes/footer.php';
 ?>
-EOF

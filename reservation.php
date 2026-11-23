@@ -1,6 +1,19 @@
-cat << 'EOF' > reservation.php
 <?php
-require_once __DIR__ . '/data/salles.php';
+require_once __DIR__ . '/config/db.php';
+
+$stmtSalles = $pdo->query('SELECT id, nom, categorie, capacite, superficie, tarif FROM salles ORDER BY id ASC');
+$sallesRows = $stmtSalles->fetchAll();
+
+$salles = [];
+foreach ($sallesRows as $row) {
+    $salles[(int) $row['id']] = $row;
+}
+
+$stmtFormules = $pdo->query('SELECT id, salle_id, nom, tarif, description FROM formules ORDER BY id ASC');
+$formulesParSalle = [];
+foreach ($stmtFormules->fetchAll() as $formuleRow) {
+    $formulesParSalle[(int) $formuleRow['salle_id']][] = $formuleRow;
+}
 
 $sallePreselectionnee = isset($_GET['salle']) ? (int) $_GET['salle'] : (isset($_GET['id']) ? (int) $_GET['id'] : 0);
 
@@ -38,8 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($valeurs['nb_invites'] < 10 || $valeurs['nb_invites'] > 500) {
         $erreurs[] = 'Le nombre d\'invités doit être compris entre 10 et 500.';
-    } elseif (isset($salles[$valeurs['id_salle']]) && $valeurs['nb_invites'] > $salles[$valeurs['id_salle']]['capacite']) {
-        $erreurs[] = 'Le nombre d\'invités dépasse la capacité maximale de la salle sélectionnée (' . $salles[$valeurs['id_salle']]['capacite'] . ' personnes).';
+    } elseif (isset($salles[$valeurs['id_salle']]) && $valeurs['nb_invites'] > (int) $salles[$valeurs['id_salle']]['capacite']) {
+        $erreurs[] = 'Le nombre d\'invités dépasse la capacité maximale de la salle sélectionnée (' . (int) $salles[$valeurs['id_salle']]['capacite'] . ' personnes).';
     }
 
     if (mb_strlen($valeurs['nom_client'], 'UTF-8') < 2) {
@@ -54,20 +67,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $erreurs[] = 'Veuillez saisir un numéro de téléphone valide.';
     }
 
-    if (empty($erreurs)) {
-        $salleChoisie = $salles[$valeurs['id_salle']];
-        $montantEstime = $salleChoisie['tarif'];
-
-        foreach ($salleChoisie['formules'] as $formuleItem) {
+    $formulesDisponibles = $formulesParSalle[$valeurs['id_salle']] ?? [];
+    $formuleValidee = null;
+    if ($valeurs['formule'] !== '') {
+        foreach ($formulesDisponibles as $formuleItem) {
             if ($formuleItem['nom'] === $valeurs['formule']) {
-                $montantEstime += $formuleItem['tarif'];
+                $formuleValidee = $formuleItem;
                 break;
             }
         }
+        if ($formuleValidee === null) {
+            $erreurs[] = 'La formule sélectionnée n\'est pas disponible pour cette salle.';
+        }
+    }
+
+    if (empty($erreurs)) {
+        $salleChoisie = $salles[$valeurs['id_salle']];
+        $montantEstime = (int) $salleChoisie['tarif'] + ($formuleValidee !== null ? (int) $formuleValidee['tarif'] : 0);
+
+        $sqlInsert = 'INSERT INTO reservations (
+            salle_id,
+            formule_nom,
+            date_evenement,
+            nb_invites,
+            nom_client,
+            email_client,
+            telephone_client,
+            commentaire,
+            montant_estime
+        ) VALUES (
+            :salle_id,
+            :formule_nom,
+            :date_evenement,
+            :nb_invites,
+            :nom_client,
+            :email_client,
+            :telephone_client,
+            :commentaire,
+            :montant_estime
+        )';
+
+        $stmtInsert = $pdo->prepare($sqlInsert);
+        $stmtInsert->execute([
+            ':salle_id' => (int) $salleChoisie['id'],
+            ':formule_nom' => $formuleValidee !== null ? $formuleValidee['nom'] : null,
+            ':date_evenement' => $valeurs['date_evenement'],
+            ':nb_invites' => (int) $valeurs['nb_invites'],
+            ':nom_client' => $valeurs['nom_client'],
+            ':email_client' => $valeurs['email_client'],
+            ':telephone_client' => $valeurs['telephone_client'],
+            ':commentaire' => $valeurs['commentaire'] !== '' ? $valeurs['commentaire'] : null,
+            ':montant_estime' => (int) $montantEstime,
+        ]);
 
         $confirmation = [
+            'id' => (int) $pdo->lastInsertId(),
             'salle' => $salleChoisie['nom'],
-            'formule' => $valeurs['formule'] !== '' ? $valeurs['formule'] : 'Aucune',
+            'formule' => $formuleValidee !== null ? $formuleValidee['nom'] : 'Aucune',
             'date_evenement' => $valeurs['date_evenement'],
             'nb_invites' => $valeurs['nb_invites'],
             'nom_client' => $valeurs['nom_client'],
@@ -80,6 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $salleActive = isset($salles[$valeurs['id_salle']]) ? $salles[$valeurs['id_salle']] : null;
+$formulesAffichage = $salleActive !== null ? ($formulesParSalle[(int) $salleActive['id']] ?? []) : [];
 
 $pageTitre = 'Demande de réservation';
 $pageActive = 'reservation';
@@ -104,7 +161,7 @@ require_once __DIR__ . '/includes/header.php';
     <?php if ($confirmation !== null): ?>
       <section aria-label="Confirmation de demande" class="carte" style="margin-bottom: 1.5rem; border-left: 4px solid #15803d;">
         <div>
-          <h3>Demande enregistrée pour <?= htmlspecialchars($confirmation['nom_client'], ENT_QUOTES, 'UTF-8') ?></h3>
+          <h3>Demande #<?= (int) $confirmation['id'] ?> enregistrée pour <?= htmlspecialchars($confirmation['nom_client'], ENT_QUOTES, 'UTF-8') ?></h3>
           <p class="meta">
             Salle : <?= htmlspecialchars($confirmation['salle'], ENT_QUOTES, 'UTF-8') ?> •
             Date : <?= htmlspecialchars($confirmation['date_evenement'], ENT_QUOTES, 'UTF-8') ?> •
@@ -138,16 +195,11 @@ require_once __DIR__ . '/includes/header.php';
         <label for="formule">Formule complémentaire (optionnel)</label>
         <select id="formule" name="formule">
           <option value="">Aucune formule</option>
-          <?php if ($salleActive !== null): ?>
-            <?php foreach ($salleActive['formules'] as $formule): ?>
-              <option value="<?= htmlspecialchars($formule['nom'], ENT_QUOTES, 'UTF-8') ?>" <?= $valeurs['formule'] === $formule['nom'] ? 'selected' : '' ?>>
-                <?= htmlspecialchars($formule['nom'], ENT_QUOTES, 'UTF-8') ?> (+ <?= (int) $formule['tarif'] ?> €)
-              </option>
-            <?php endforeach; ?>
-          <?php else: ?>
-            <option value="Pack Son &amp; Lumière" <?= $valeurs['formule'] === 'Pack Son & Lumière' ? 'selected' : '' ?>>Pack Son &amp; Lumière (+ 350 €)</option>
-            <option value="Décoration Florale" <?= $valeurs['formule'] === 'Décoration Florale' ? 'selected' : '' ?>>Décoration Florale (+ 480 €)</option>
-          <?php endif; ?>
+          <?php foreach ($formulesAffichage as $formule): ?>
+            <option value="<?= htmlspecialchars($formule['nom'], ENT_QUOTES, 'UTF-8') ?>" <?= $valeurs['formule'] === $formule['nom'] ? 'selected' : '' ?>>
+              <?= htmlspecialchars($formule['nom'], ENT_QUOTES, 'UTF-8') ?> (+ <?= (int) $formule['tarif'] ?> €)
+            </option>
+          <?php endforeach; ?>
         </select>
       </div>
 
@@ -219,4 +271,3 @@ require_once __DIR__ . '/includes/header.php';
 <?php
 require_once __DIR__ . '/includes/footer.php';
 ?>
-EOF

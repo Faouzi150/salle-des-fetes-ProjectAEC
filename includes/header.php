@@ -14,7 +14,7 @@ $pageActive = $pageActive ?? '';
 <body>
   <header>
     <div class="conteneur nav-barre">
-      <a href="index.php" class="logo">Palais des Fêtes</a>
+      <a href="index.php" class="logo">palais des fetes</a>
       <nav aria-label="Navigation principale">
         <ul>
           <li><a href="index.php"<?= $pageActive === 'accueil' ? ' class="actif"' : '' ?>>Accueil</a></li>

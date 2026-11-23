@@ -1,34 +1,41 @@
-cat << 'EOF' > catalogue.php
 <?php
-require_once __DIR__ . '/data/salles.php';
+require_once __DIR__ . '/config/db.php';
 
 $recherche = trim($_GET['recherche'] ?? '');
 $type = trim($_GET['type'] ?? '');
 $tri = $_GET['tri'] ?? 'nom_asc';
 
-$sallesFiltrees = array_filter($salles, static function (array $salle) use ($recherche, $type): bool {
-    if ($type !== '' && strcasecmp($salle['categorie'], $type) !== 0) {
-        return false;
-    }
+$conditions = [];
+$params = [];
 
-    if ($recherche !== '') {
-        $texte = mb_strtolower($salle['nom'] . ' ' . $salle['categorie'] . ' ' . $salle['resume'] . ' ' . $salle['description'], 'UTF-8');
-        $motif = mb_strtolower($recherche, 'UTF-8');
-        if (mb_strpos($texte, $motif) === false) {
-            return false;
-        }
-    }
+if ($type !== '') {
+    $conditions[] = 'categorie = :type';
+    $params[':type'] = $type;
+}
 
-    return true;
-});
+if ($recherche !== '') {
+    $conditions[] = '(nom LIKE :motif1 OR resume LIKE :motif2 OR description LIKE :motif3)';
+    $motif = '%' . $recherche . '%';
+    $params[':motif1'] = $motif;
+    $params[':motif2'] = $motif;
+    $params[':motif3'] = $motif;
+}
 
-usort($sallesFiltrees, static function (array $a, array $b) use ($tri): int {
-    return match ($tri) {
-        'tarif_asc' => $a['tarif'] <=> $b['tarif'],
-        'capacite_desc' => $b['capacite'] <=> $a['capacite'],
-        default => strcmp($a['nom'], $b['nom']),
-    };
-});
+$sql = 'SELECT id, nom, categorie, capacite, superficie, tarif, resume FROM salles';
+if (!empty($conditions)) {
+    $sql .= ' WHERE ' . implode(' AND ', $conditions);
+}
+
+$orderBy = match ($tri) {
+    'tarif_asc' => 'tarif ASC',
+    'capacite_desc' => 'capacite DESC',
+    default => 'nom ASC',
+};
+$sql .= ' ORDER BY ' . $orderBy;
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$sallesFiltrees = $stmt->fetchAll();
 
 $pageTitre = 'Nos Salles';
 $pageActive = 'catalogue';
@@ -106,4 +113,3 @@ require_once __DIR__ . '/includes/header.php';
 <?php
 require_once __DIR__ . '/includes/footer.php';
 ?>
-EOF

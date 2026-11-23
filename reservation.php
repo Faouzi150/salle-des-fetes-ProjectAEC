@@ -82,6 +82,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($erreurs)) {
+        $stmtDispo = $pdo->prepare(
+            'SELECT COUNT(*) FROM reservations WHERE salle_id = :salle_id AND date_evenement = :date_evenement'
+        );
+        $stmtDispo->execute([
+            ':salle_id' => (int) $valeurs['id_salle'],
+            ':date_evenement' => $valeurs['date_evenement'],
+        ]);
+
+        if ((int) $stmtDispo->fetchColumn() > 0) {
+            $erreurs[] = 'Cette salle est déjà réservée à cette date. Veuillez choisir une autre date ou une autre salle.';
+        }
+    }
+
+    if (empty($erreurs)) {
         $salleChoisie = $salles[$valeurs['id_salle']];
         $montantEstime = (int) $salleChoisie['tarif'] + ($formuleValidee !== null ? (int) $formuleValidee['tarif'] : 0);
 
@@ -107,31 +121,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             :montant_estime
         )';
 
-        $stmtInsert = $pdo->prepare($sqlInsert);
-        $stmtInsert->execute([
-            ':salle_id' => (int) $salleChoisie['id'],
-            ':formule_nom' => $formuleValidee !== null ? $formuleValidee['nom'] : null,
-            ':date_evenement' => $valeurs['date_evenement'],
-            ':nb_invites' => (int) $valeurs['nb_invites'],
-            ':nom_client' => $valeurs['nom_client'],
-            ':email_client' => $valeurs['email_client'],
-            ':telephone_client' => $valeurs['telephone_client'],
-            ':commentaire' => $valeurs['commentaire'] !== '' ? $valeurs['commentaire'] : null,
-            ':montant_estime' => (int) $montantEstime,
-        ]);
+        try {
+            $stmtInsert = $pdo->prepare($sqlInsert);
+            $stmtInsert->execute([
+                ':salle_id' => (int) $salleChoisie['id'],
+                ':formule_nom' => $formuleValidee !== null ? $formuleValidee['nom'] : null,
+                ':date_evenement' => $valeurs['date_evenement'],
+                ':nb_invites' => (int) $valeurs['nb_invites'],
+                ':nom_client' => $valeurs['nom_client'],
+                ':email_client' => $valeurs['email_client'],
+                ':telephone_client' => $valeurs['telephone_client'],
+                ':commentaire' => $valeurs['commentaire'] !== '' ? $valeurs['commentaire'] : null,
+                ':montant_estime' => (int) $montantEstime,
+            ]);
 
-        $confirmation = [
-            'id' => (int) $pdo->lastInsertId(),
-            'salle' => $salleChoisie['nom'],
-            'formule' => $formuleValidee !== null ? $formuleValidee['nom'] : 'Aucune',
-            'date_evenement' => $valeurs['date_evenement'],
-            'nb_invites' => $valeurs['nb_invites'],
-            'nom_client' => $valeurs['nom_client'],
-            'email_client' => $valeurs['email_client'],
-            'telephone_client' => $valeurs['telephone_client'],
-            'commentaire' => $valeurs['commentaire'],
-            'montant_estime' => $montantEstime,
-        ];
+            $confirmation = [
+                'id' => (int) $pdo->lastInsertId(),
+                'salle' => $salleChoisie['nom'],
+                'formule' => $formuleValidee !== null ? $formuleValidee['nom'] : 'Aucune',
+                'date_evenement' => $valeurs['date_evenement'],
+                'nb_invites' => $valeurs['nb_invites'],
+                'nom_client' => $valeurs['nom_client'],
+                'email_client' => $valeurs['email_client'],
+                'telephone_client' => $valeurs['telephone_client'],
+                'commentaire' => $valeurs['commentaire'],
+                'montant_estime' => $montantEstime,
+            ];
+        } catch (PDOException $e) {
+            if ($e->getCode() === '23000') {
+                $erreurs[] = 'Cette salle vient tout juste d\'être réservée à cette date.';
+            } else {
+                throw $e;
+            }
+        }
     }
 }
 

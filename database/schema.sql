@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS `reservations` (
   `montant_estime` INT UNSIGNED NOT NULL,
   `date_creation` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_reservations_salle_date` (`salle_id`, `date_evenement`),
   KEY `idx_reservations_salle_id` (`salle_id`),
   CONSTRAINT `fk_reservations_salle`
     FOREIGN KEY (`salle_id`) REFERENCES `salles` (`id`)

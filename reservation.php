@@ -9,7 +9,7 @@ foreach ($sallesRows as $row) {
     $salles[(int) $row['id']] = $row;
 }
 
-$stmtFormules = $pdo->query('SELECT id, salle_id, nom, tarif, description FROM formules ORDER BY id ASC');
+$stmtFormules = $pdo->query('SELECT id, salle_id, nom, tarif, description FROM formules ORDER BY salle_id ASC, id ASC');
 $formulesParSalle = [];
 foreach ($stmtFormules->fetchAll() as $formuleRow) {
     $formulesParSalle[(int) $formuleRow['salle_id']][] = $formuleRow;
@@ -157,8 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$salleActive = isset($salles[$valeurs['id_salle']]) ? $salles[$valeurs['id_salle']] : null;
-$formulesAffichage = $salleActive !== null ? ($formulesParSalle[(int) $salleActive['id']] ?? []) : [];
+$formulesAffichage = $formulesParSalle[(int) $valeurs['id_salle']] ?? [];
 
 $pageTitre = 'Demande de réservation';
 $pageActive = 'reservation';
@@ -290,6 +289,27 @@ require_once __DIR__ . '/includes/header.php';
       <button type="submit" class="btn btn-primaire">Envoyer la demande</button>
     </form>
   </main>
+
+  <script>
+    const formulesParSalle = <?= json_encode($formulesParSalle, JSON_UNESCAPED_UNICODE) ?>;
+    const selectSalle = document.getElementById('id_salle');
+    const selectFormule = document.getElementById('formule');
+
+    if (selectSalle && selectFormule) {
+      selectSalle.addEventListener('change', () => {
+        const salleId = selectSalle.value;
+        const liste = formulesParSalle[salleId] || [];
+
+        selectFormule.innerHTML = '<option value="">Aucune formule</option>';
+        for (const item of liste) {
+          const opt = document.createElement('option');
+          opt.value = item.nom;
+          opt.textContent = `${item.nom} (+ ${item.tarif} €)`;
+          selectFormule.appendChild(opt);
+        }
+      });
+    }
+  </script>
 <?php
 require_once __DIR__ . '/includes/footer.php';
 ?>

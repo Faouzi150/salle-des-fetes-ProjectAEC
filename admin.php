@@ -2,6 +2,10 @@ cd /Applications/MAMP/htdocs/ProjectAEC
 cat << 'EOF' > admin.php
 <?php
 require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/includes/auth.php';
+
+$utilisateurActuel = exigerConnexion(['admin', 'gestionnaire']);
+$peutSupprimer = estAdmin($utilisateurActuel);
 
 $statutsAutorises = [
     'en_attente' => 'En attente',
@@ -14,19 +18,23 @@ $messageErreur = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['supprimer_id'])) {
-        $idSuppression = (int) $_POST['supprimer_id'];
-
-        if ($idSuppression > 0) {
-            $stmtDelete = $pdo->prepare('DELETE FROM reservations WHERE id = :id');
-            $stmtDelete->execute([':id' => $idSuppression]);
-
-            if ($stmtDelete->rowCount() > 0) {
-                $messageSucces = 'La réservation #' . $idSuppression . ' a bien été supprimée.';
-            } else {
-                $messageErreur = 'Aucune réservation correspondante trouvée.';
-            }
+        if (!$peutSupprimer) {
+            $messageErreur = 'Seul un compte administrateur peut supprimer une réservation.';
         } else {
-            $messageErreur = 'Identifiant de réservation invalide.';
+            $idSuppression = (int) $_POST['supprimer_id'];
+
+            if ($idSuppression > 0) {
+                $stmtDelete = $pdo->prepare('DELETE FROM reservations WHERE id = :id');
+                $stmtDelete->execute([':id' => $idSuppression]);
+
+                if ($stmtDelete->rowCount() > 0) {
+                    $messageSucces = 'La réservation #' . $idSuppression . ' a bien été supprimée.';
+                } else {
+                    $messageErreur = 'Aucune réservation correspondante trouvée.';
+                }
+            } else {
+                $messageErreur = 'Identifiant de réservation invalide.';
+            }
         }
     } elseif (isset($_POST['statut_id'], $_POST['nouveau_statut'])) {
         $idReservation = (int) $_POST['statut_id'];
@@ -77,6 +85,12 @@ require_once __DIR__ . '/includes/header.php';
   <main class="conteneur">
     <h1 class="section-titre">Réservations enregistrées</h1>
 
+    <p class="meta" style="margin-bottom: 1rem;">
+      Connecté en tant que <strong><?= htmlspecialchars($utilisateurActuel['nom'], ENT_QUOTES, 'UTF-8') ?></strong>
+      (rôle : <strong><?= htmlspecialchars($utilisateurActuel['role'], ENT_QUOTES, 'UTF-8') ?></strong>) —
+      <a href="logout.php">Se déconnecter</a>
+    </p>
+
     <?php if ($messageSucces !== null): ?>
       <section class="carte" style="margin-bottom: 1.5rem; border-left: 4px solid #15803d;">
         <div>
@@ -116,7 +130,9 @@ require_once __DIR__ . '/includes/header.php';
               <th style="text-align: left; padding: 0.6rem; border-bottom: 2px solid #ccc;">Invités</th>
               <th style="text-align: left; padding: 0.6rem; border-bottom: 2px solid #ccc;">Estimation</th>
               <th style="text-align: left; padding: 0.6rem; border-bottom: 2px solid #ccc;">Statut</th>
-              <th style="text-align: left; padding: 0.6rem; border-bottom: 2px solid #ccc;">Actions</th>
+              <?php if ($peutSupprimer): ?>
+                <th style="text-align: left; padding: 0.6rem; border-bottom: 2px solid #ccc;">Actions</th>
+              <?php endif; ?>
             </tr>
           </thead>
           <tbody>
@@ -146,12 +162,14 @@ require_once __DIR__ . '/includes/header.php';
                     <button type="submit" class="btn">Enregistrer</button>
                   </form>
                 </td>
-                <td style="padding: 0.6rem; border-bottom: 1px solid #e5e7eb;">
-                  <form action="admin.php" method="post" onsubmit="return confirm('Supprimer cette réservation ?');">
-                    <input type="hidden" name="supprimer_id" value="<?= (int) $res['id'] ?>">
-                    <button type="submit" class="btn">Supprimer</button>
-                  </form>
-                </td>
+                <?php if ($peutSupprimer): ?>
+                  <td style="padding: 0.6rem; border-bottom: 1px solid #e5e7eb;">
+                    <form action="admin.php" method="post" onsubmit="return confirm('Supprimer cette réservation ?');">
+                      <input type="hidden" name="supprimer_id" value="<?= (int) $res['id'] ?>">
+                      <button type="submit" class="btn">Supprimer</button>
+                    </form>
+                  </td>
+                <?php endif; ?>
               </tr>
             <?php endforeach; ?>
           </tbody>
@@ -163,4 +181,4 @@ require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/footer.php';
 ?>
 EOF
-/Applications/MAMP/bin/php/php8.5.2/bin/php -l admin.php
+/Applications/MAMP/bin/php/php8.5.2/bin/php -l includes/auth.php login.php logout.php admin.php
